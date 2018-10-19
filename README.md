@@ -8,7 +8,7 @@ Using go version 1.11 or above.
 
 Set the creditails permission first, you may create a service account with Role **Monitoring Viewer**
 
-Use current login permission:
+Use current login permission:
 
 ```shell
 $ gcloud auth application-default login
