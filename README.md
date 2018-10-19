@@ -6,7 +6,7 @@ Using go version 1.11 or above.
 
 ## Setup Credentials
 
-Set the creditails permission first, you may create a service account with Role *Monitoring Viewer*
+Set the creditails permission first, you may create a service account with Role **Monitoring Viewer**
 
 Use current login permission:
 
