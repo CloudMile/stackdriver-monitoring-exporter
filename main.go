@@ -6,40 +6,16 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2/google"
-
 	"google.golang.org/api/monitoring/v3"
+	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
 	. "stackdriver-monitoring-exporter/pkg/utils"
 )
 
 const dir = "metrics"
-
-func getCred(ctx context.Context) (cred *google.Credentials) {
-	cred, err := google.FindDefaultCredentials(ctx, monitoring.MonitoringReadScope)
-	if err != nil {
-		log.Fatal("%v", err)
-	}
-	log.Printf("Project ID: %s", cred.ProjectID)
-
-	return
-}
-
-func newClient(ctx context.Context, cred *google.Credentials) (client *http.Client) {
-	conf, err := google.JWTConfigFromJSON(cred.JSON, monitoring.MonitoringReadScope)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	client = conf.Client(ctx)
-
-	return
-}
 
 func saveTimeSeriesToCSV(filename string, points []*monitoring.Point) {
 	log.Printf("Points len: %d", len(points))
@@ -68,37 +44,6 @@ func saveToFile(filename, content string) {
 	fmt.Fprintf(file, content)
 }
 
-func retrieveMetricPoints(projectID string, cm *ConfMetric) (points []*monitoring.Point) {
-	ctx := context.Background()
-	cred := getCred(ctx)
-	client := newClient(ctx, cred)
-
-	svc, err := monitoring.New(client)
-	if err != nil {
-		log.Fatal("%v", err)
-	}
-
-	project := "projects/" + projectID
-
-	projectsTimeSeriesListCall := svc.Projects.TimeSeries.List(project)
-	projectsTimeSeriesListCall.Filter(cm.Filters())
-	projectsTimeSeriesListCall.IntervalStartTime(cm.IntervalStartTime())
-	projectsTimeSeriesListCall.IntervalEndTime(cm.IntervalEndTime())
-	projectsTimeSeriesListCall.AggregationPerSeriesAligner(cm.AggregationPerSeriesAligner)
-	projectsTimeSeriesListCall.AggregationAlignmentPeriod(cm.AggregationAlignmentPeriod)
-
-	listResp, err := projectsTimeSeriesListCall.Do()
-	if err != nil {
-		log.Fatal("%v", err)
-	}
-
-	// Only get the first timeseries
-	timeSeries := listResp.TimeSeries[0]
-	points = timeSeries.Points
-
-	return
-}
-
 ////////////////////////////////////////////////////////////////
 // Main Function
 
@@ -106,13 +51,15 @@ func main() {
 	var c Conf
 	c.LoadConfig()
 
+	client := stackdriver.MonitoringClient{}
+
 	for i := range c.Projects {
 		project := c.Projects[i]
 		for j := range project.Metrics {
 			metric := project.Metrics[j]
 			metric.LoadConfig()
 
-			points := retrieveMetricPoints(project.ProjectID, &metric)
+			points := client.RetrieveMetricPoints(project.ProjectID, &metric)
 
 			dateTime := metric.StartTime.In(metric.Location()).Format("2006-01-02T15:04:05")
 			output := fmt.Sprintf("%s/%s[%s][%s].csv", dir, dateTime, metric.Title, metric.Unit)
