@@ -1,0 +1,22 @@
+# https://cloud.google.com/monitoring/api/metrics_gcp
+projects:
+  - projectID: <YOUR_PROJECT_ID>
+    metrics:
+    - title: vm-cpu-usage_time
+      metricType: compute.googleapis.com/instance/cpu/usage_time
+      andFilters:
+        - metric.labels.instance_name="gce-instance-name"
+      intervalType: day
+      timezone: 8
+      unit: s
+      aggregationPerSeriesAligner: ALIGN_RATE
+      aggregationAlignmentPeriod: 300s
+    - title: vm-cpu-network-sent_bytes_count
+      metricType: compute.googleapis.com/instance/network/sent_bytes_count
+      andFilters:
+        - metric.labels.instance_name="gce-instance-name"
+      intervalType: day
+      timezone: 8
+      unit: bytes
+      aggregationPerSeriesAligner: ALIGN_RATE
+      aggregationAlignmentPeriod: 300s
