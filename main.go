@@ -8,39 +8,27 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
-	"google.golang.org/api/monitoring/v3"
 	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
 	. "stackdriver-monitoring-exporter/pkg/utils"
 )
 
 const dir = "metrics"
 
-func saveTimeSeriesToCSV(filename string, points []*monitoring.Point) {
-	log.Printf("Points len: %d", len(points))
+func saveTimeSeriesToCSV(filename string, metricPoints []string) {
+	log.Printf("Points len: %d", len(metricPoints))
 
-	n := len(points)
-	metrics := make([]string, n+1)
-	metrics[0] = "timestamp,datetime,value"
-	var idx int
-	for i := range points {
-		idx = n - i - 1
-		t, _ := time.Parse("2006-01-02T15:04:05Z", points[idx].Interval.StartTime)
-		t = t.Add(time.Hour * 8)
-		metrics[i+1] = fmt.Sprintf("%d,%s,%g", t.Unix(), t.Format("2006-01-02 15:04:05"), *(points[idx].Value.DoubleValue))
-	}
-
-	saveToFile(filename, strings.Join(metrics, "\n"))
+	saveToFile(filename, stackdriver.PointCSVHeader, strings.Join(metricPoints, "\n"))
 }
 
-func saveToFile(filename, content string) {
+func saveToFile(filename, header, content string) {
 	file, err := os.Create(filename)
 	if err != nil {
 		log.Fatal("Cannot create file", err)
 	}
 	defer file.Close()
 
+	fmt.Fprintf(file, "%s\n", header)
 	fmt.Fprintf(file, content)
 }
 
