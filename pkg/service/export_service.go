@@ -13,17 +13,17 @@ var monitoringMetrics = []string{
 }
 
 type ExportService struct {
-	conf utils.Conf
+	conf     utils.Conf
 	Exporter metric_exporter.MetricExporter
 }
 
-func (es ExportService) Do () {
+func (es ExportService) Do() {
 	var c utils.Conf
 	c.LoadConfig()
 
 	client := stackdriver.MonitoringClient{}
 
-	client.SetTimezone(8)
+	client.SetTimezone(c.Timezone)
 
 	for prjIdx := range c.Projects {
 		projectID := c.Projects[prjIdx].ProjectID

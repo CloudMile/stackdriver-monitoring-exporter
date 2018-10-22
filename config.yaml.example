@@ -1,3 +1,4 @@
 # https://cloud.google.com/monitoring/api/metrics_gcp
 projects:
   - projectID: <YOUR_PROJECT_ID>
+timezone: 8

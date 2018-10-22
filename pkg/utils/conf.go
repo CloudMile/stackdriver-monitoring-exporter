@@ -9,6 +9,7 @@ import (
 
 type Conf struct {
 	Projects []ConfProject `yaml:"projects"`
+	Timezone int           `yaml:"timezone"`
 }
 
 func (c *Conf) LoadConfig() *Conf {
