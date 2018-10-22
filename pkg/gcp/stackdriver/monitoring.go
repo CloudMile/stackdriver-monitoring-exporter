@@ -17,12 +17,12 @@ const AggregationAlignmentPeriod = "60s"
 const AggregationPerSeriesAligner = "ALIGN_RATE"
 
 type MonitoringClient struct {
-	TimeZone  int
-	StartTime time.Time
-	EndTime   time.Time
+	TimeZone          int
+	StartTime         time.Time
+	EndTime           time.Time
 	IntervalStartTime string
-	IntervalEndTime string
-	client *http.Client
+	IntervalEndTime   string
+	client            *http.Client
 }
 
 func (c *MonitoringClient) SetTimezone(timezone int) {
@@ -57,7 +57,7 @@ func (c *MonitoringClient) getCred(ctx context.Context) (cred *google.Credential
 }
 
 func (c *MonitoringClient) getClient() (client *http.Client) {
-	if (c.client == nil) {
+	if c.client == nil {
 		ctx := context.Background()
 		cred := c.getCred(ctx)
 		c.client = c.newClient(ctx, cred)

@@ -1,5 +1,5 @@
 package utils
 
 type ConfProject struct {
-	ProjectID string       `yaml:"projectID"`
+	ProjectID string `yaml:"projectID"`
 }
