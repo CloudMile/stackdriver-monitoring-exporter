@@ -47,7 +47,7 @@ func export(dateTime time.Time, projectID, metric, instanceName string, metricPo
 	title := strings.Replace(metric, "compute.googleapis.com/instance/", "", -1)
 	title = strings.Replace(title, "/", "_", -1)
 
-	output := fmt.Sprintf("%s/%s[%s].csv", folder, dateTime.Format("2006-01-02T15:04:05"), title)
+	output := fmt.Sprintf("%s/%s[%s][%s].csv", folder, dateTime.Format("2006-01-02T15:04:05"), instanceName, title)
 	saveTimeSeriesToCSV(output, metricPoints)
 }
 

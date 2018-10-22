@@ -21,15 +21,5 @@ func (c *Conf) LoadConfig() *Conf {
 		log.Fatalf("Unmarshal: %v", err)
 	}
 
-	var project ConfProject
-	var metric ConfMetric
-	for i := range c.Projects {
-		project = c.Projects[i]
-		for j := range project.Metrics {
-			metric = project.Metrics[j]
-			metric.LoadConfig()
-		}
-	}
-
 	return c
 }
