@@ -8,20 +8,27 @@ import (
 	"time"
 
 	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
+	"stackdriver-monitoring-exporter/pkg/utils"
 )
 
-const dir = "metrics"
-
 type FileExporter struct {
+	Dir string
 }
 
-func saveTimeSeriesToCSV(filename string, metricPoints []string) {
+func NewFileExporter(c utils.Conf) MetricExporter {
+	exporter := FileExporter{}
+	exporter.Dir = c.Destination
+
+	return exporter
+}
+
+func (f FileExporter) saveTimeSeriesToCSV(filename string, metricPoints []string) {
 	log.Printf("Points len: %d", len(metricPoints))
 
-	saveToFile(filename, stackdriver.PointCSVHeader, strings.Join(metricPoints, "\n"))
+	f.saveToFile(filename, stackdriver.PointCSVHeader, strings.Join(metricPoints, "\n"))
 }
 
-func saveToFile(filename, header, content string) {
+func (f FileExporter) saveToFile(filename, header, content string) {
 	file, err := os.Create(filename)
 	if err != nil {
 		log.Fatal("Cannot create file", err)
@@ -33,12 +40,12 @@ func saveToFile(filename, header, content string) {
 }
 
 func (f FileExporter) Export(dateTime time.Time, projectID, metric, instanceName string, metricPoints []string) {
-	folder := fmt.Sprintf("%s/%s/%d/%2d/%2d/%s", dir, projectID, dateTime.Year(), dateTime.Month(), dateTime.Day(), instanceName)
+	folder := fmt.Sprintf("%s/%s/%d/%2d/%2d/%s", f.Dir, projectID, dateTime.Year(), dateTime.Month(), dateTime.Day(), instanceName)
 	os.MkdirAll(folder, os.ModePerm)
 
 	title := strings.Replace(metric, "compute.googleapis.com/instance/", "", -1)
 	title = strings.Replace(title, "/", "_", -1)
 
 	output := fmt.Sprintf("%s/%s[%s][%s].csv", folder, dateTime.Format("2006-01-02T15:04:05"), instanceName, title)
-	saveTimeSeriesToCSV(output, metricPoints)
+	f.saveTimeSeriesToCSV(output, metricPoints)
 }

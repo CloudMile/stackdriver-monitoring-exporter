@@ -20,6 +20,8 @@ Use the Service Account's crendentials
 $ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 ```
 
+## Configuration
+
 Edit the `config.yaml`
 
 ```shell
@@ -32,11 +34,23 @@ Example:
 # https://cloud.google.com/monitoring/api/metrics_gcp
 projects:
   - projectID: <YOUR_PROJECT_ID>
+exporter: FileExporter # FileExporter, GCSExporter
+destination: metrics
 ```
 
 Replace `<YOUR_PROJECT_ID>` with your project ID
 
-Execute to download the metric points:
+Now support two Exporter Class:
+* FileExporter
+* GCSExporter
+
+FileExporter's destination is file path.
+
+GCSExporter'destination is Google Cloud Storage Bucket Name.
+
+## Export
+
+Execute to export the metric points:
 
 ```shell
 $ go run main.go
@@ -45,8 +59,8 @@ $ go run main.go
 The metrics csv will be generated to metrics directory.
 
 ```shell
-metrics/
-└── cloudmilewebhosting
+<destination>/
+└── <project_id>
     └── 2018
         └── 10
             └── 18
@@ -56,7 +70,7 @@ metrics/
                     └── 2018-10-18T00:00:00[instance_name][network_sent_bytes_count].csv
 ```
 
-Content is like:
+File content looks like:
 
 ```plain
 timestamp,datetime,value

@@ -2,3 +2,5 @@
 projects:
   - projectID: <YOUR_PROJECT_ID>
 timezone: 8
+exporter: FileExporter # FileExporter, GCSExporter
+destination: metrics

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log"
 	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
 	"stackdriver-monitoring-exporter/pkg/metric_exporter"
 	"stackdriver-monitoring-exporter/pkg/utils"
@@ -13,13 +14,23 @@ var monitoringMetrics = []string{
 }
 
 type ExportService struct {
-	conf     utils.Conf
-	Exporter metric_exporter.MetricExporter
+	conf utils.Conf
+}
+
+func newMetricExporter(c utils.Conf) metric_exporter.MetricExporter {
+	switch c.ExporterClass {
+	case "GCSExporter":
+		return metric_exporter.NewGCSExporter(c)
+	default:
+		return metric_exporter.NewFileExporter(c)
+	}
 }
 
 func (es ExportService) Do() {
 	var c utils.Conf
 	c.LoadConfig()
+
+	metricExporter := newMetricExporter(c)
 
 	client := stackdriver.MonitoringClient{}
 
@@ -38,7 +49,7 @@ func (es ExportService) Do() {
 
 				points := client.RetrieveMetricPoints(projectID, metric, instanceName)
 
-				es.Exporter.Export(client.StartTime.In(client.Location()), projectID, metric, instanceName, points)
+				metricExporter.Export(client.StartTime.In(client.Location()), projectID, metric, instanceName, points)
 			}
 		}
 	}
