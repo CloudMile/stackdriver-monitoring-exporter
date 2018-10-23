@@ -46,7 +46,7 @@ Now support two Exporter Class:
 
 FileExporter's destination is file path.
 
-GCSExporter'destination is Google Cloud Storage Bucket Name.
+GCSExporter'destination is Google Cloud Storage Bucket Name. The service acccount has to been grant the **Storage Object Admin** permission of Bucket.
 
 ## Export
 
