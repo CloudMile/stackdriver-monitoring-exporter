@@ -20,6 +20,8 @@ Use the Service Account's crendentials
 $ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 ```
 
+## Configuration
+
 Edit the `config.yaml`
 
 ```shell
@@ -32,30 +34,23 @@ Example:
 # https://cloud.google.com/monitoring/api/metrics_gcp
 projects:
   - projectID: <YOUR_PROJECT_ID>
-    metrics:
-    - title: vm-cpu-usage_time
-      metricType: compute.googleapis.com/instance/cpu/usage_time
-      andFilters:
-        - metric.labels.instance_name="gce-instance-name"
-      intervalType: day
-      timezone: 8
-      unit: s
-      aggregationPerSeriesAligner: ALIGN_RATE
-      aggregationAlignmentPeriod: 300s
-    - title: vm-cpu-network-sent_bytes_count
-      metricType: compute.googleapis.com/instance/network/sent_bytes_count
-      andFilters:
-        - metric.labels.instance_name="gce-instance-name"
-      intervalType: day
-      timezone: 8
-      unit: bytes
-      aggregationPerSeriesAligner: ALIGN_RATE
-      aggregationAlignmentPeriod: 300s
+exporter: FileExporter # FileExporter, GCSExporter
+destination: metrics
 ```
 
-Replace `<YOUR_PROJECT_ID>` with your project ID, and `gce-instance-name` to your instance name.
+Replace `<YOUR_PROJECT_ID>` with your project ID
 
-Execute to download the metric points:
+Now support two Exporter Class:
+* FileExporter
+* GCSExporter
+
+FileExporter's destination is file path.
+
+GCSExporter'destination is Google Cloud Storage Bucket Name. The service acccount has to been grant the **Storage Object Admin** permission of Bucket.
+
+## Export
+
+Execute to export the metric points:
 
 ```shell
 $ go run main.go
@@ -64,12 +59,18 @@ $ go run main.go
 The metrics csv will be generated to metrics directory.
 
 ```shell
-metrics/
-├── 2018-10-18T00:00:00[vm-cpu-usage_time][s].csv
-└── 2018-10-18T00:00:00[vm-cpu-network-sent_bytes_count][bytes].csv
+<destination>/
+└── <project_id>
+    └── 2018
+        └── 10
+            └── 18
+                └── instance_name
+                    ├── 2018-10-18T00:00:00[instance_name][cpu_usage_time].csv
+                    ├── 2018-10-18T00:00:00[instance_name][network_received_bytes_count].csv
+                    └── 2018-10-18T00:00:00[instance_name][network_sent_bytes_count].csv
 ```
 
-Content is like:
+File content looks like:
 
 ```plain
 timestamp,datetime,value

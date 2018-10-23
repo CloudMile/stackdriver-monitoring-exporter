@@ -8,7 +8,10 @@ import (
 )
 
 type Conf struct {
-	Projects []ConfProject `yaml:"projects"`
+	Projects      []ConfProject `yaml:"projects"`
+	Timezone      int           `yaml:"timezone"`
+	ExporterClass string        `yaml:"exporterClass"`
+	Destination   string        `yaml:"destination"`
 }
 
 func (c *Conf) LoadConfig() *Conf {
@@ -19,16 +22,6 @@ func (c *Conf) LoadConfig() *Conf {
 	err = yaml.Unmarshal(yamlFile, c)
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)
-	}
-
-	var project ConfProject
-	var metric ConfMetric
-	for i := range c.Projects {
-		project = c.Projects[i]
-		for j := range project.Metrics {
-			metric = project.Metrics[j]
-			metric.LoadConfig()
-		}
 	}
 
 	return c
