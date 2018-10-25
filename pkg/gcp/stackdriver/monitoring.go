@@ -15,6 +15,7 @@ import (
 const PointCSVHeader = "timestamp,datetime,value"
 const AggregationAlignmentPeriod = "60s"
 const AggregationPerSeriesAligner = "ALIGN_RATE"
+const MinutesOneDay = 60 * 24
 
 type MonitoringClient struct {
 	TimeZone          int
@@ -80,15 +81,24 @@ func (c *MonitoringClient) newClient(ctx context.Context, cred *google.Credentia
 }
 
 func (c *MonitoringClient) pointsToMetricPoints(points []*monitoring.Point) (metricPoints []string) {
-	n := len(points)
+	metricPoints = make([]string, MinutesOneDay)
 
-	metricPoints = make([]string, n)
-	var idx int
-	for i := range points {
-		idx = n - i - 1
-		t, _ := time.Parse("2006-01-02T15:04:05Z", points[idx].Interval.StartTime)
-		t = t.Add(time.Hour * 8)
-		metricPoints[i] = fmt.Sprintf("%d,%s,%g", t.Unix(), t.Format("2006-01-02 15:04:05"), *(points[idx].Value.DoubleValue))
+	pointTime := c.StartTime
+	var pointIdx = len(points) - 1
+	for metricIdx := range metricPoints {
+		pointTime = pointTime.Add(time.Second * 60)
+
+		t, _ := time.Parse("2006-01-02T15:04:05Z", points[pointIdx].Interval.StartTime)
+
+		if pointTime.Equal(t) {
+			t = t.Add(time.Hour * c.TimeZone)
+			metricPoints[metricIdx] = fmt.Sprintf("%d,%s,%g", t.Unix(), t.Format("2006-01-02 15:04:05"), *(points[pointIdx].Value.DoubleValue))
+
+			pointIdx = pointIdx - 1
+		} else {
+			t = pointTime.Add(time.Hour * c.TimeZone)
+			metricPoints[metricIdx] = fmt.Sprintf("%d,%s,", t.Unix(), t.Format("2006-01-02 15:04:05"))
+		}
 	}
 
 	return
