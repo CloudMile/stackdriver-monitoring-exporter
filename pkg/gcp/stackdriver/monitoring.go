@@ -17,6 +17,9 @@ const AggregationAlignmentPeriod = "60s"
 const AggregationPerSeriesAligner = "ALIGN_RATE"
 const MinutesOneDay = 60 * 24
 
+const InstanceNameKey = "instanceName"
+const DeviceNameKey = "deviceName"
+
 type MonitoringClient struct {
 	TimeZone          int
 	StartTime         time.Time
@@ -91,12 +94,12 @@ func (c *MonitoringClient) pointsToMetricPoints(points []*monitoring.Point) (met
 		t, _ := time.Parse("2006-01-02T15:04:05Z", points[pointIdx].Interval.StartTime)
 
 		if pointTime.Equal(t) {
-			t = t.Add(time.Hour * c.TimeZone)
+			t = t.Add(time.Hour * (time.Duration)(c.TimeZone))
 			metricPoints[metricIdx] = fmt.Sprintf("%d,%s,%g", t.Unix(), t.Format("2006-01-02 15:04:05"), *(points[pointIdx].Value.DoubleValue))
 
 			pointIdx = pointIdx - 1
 		} else {
-			t = pointTime.Add(time.Hour * c.TimeZone)
+			t = pointTime.Add(time.Hour * (time.Duration)(c.TimeZone))
 			metricPoints[metricIdx] = fmt.Sprintf("%d,%s,", t.Unix(), t.Format("2006-01-02 15:04:05"))
 		}
 	}
@@ -104,7 +107,15 @@ func (c *MonitoringClient) pointsToMetricPoints(points []*monitoring.Point) (met
 	return
 }
 
-func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, instanceName string) (metricPoints []string) {
+func MakeInstanceFilter(metric, instanceName string) string {
+	return fmt.Sprintf(`metric.type="%s" AND metric.labels.instance_name="%s"`, metric, instanceName)
+}
+
+func MakeDiskFilter(metric, instanceName, deviceName string) string {
+	return fmt.Sprintf(`metric.type="%s" AND metric.labels.instance_name="%s" AND metric.labels.device_name="%s"`, metric, instanceName, deviceName)
+}
+
+func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, filter string) (metricPoints []string) {
 	client := c.getClient()
 
 	svc, err := monitoring.New(client)
@@ -113,7 +124,6 @@ func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, instanceName 
 	}
 
 	project := "projects/" + projectID
-	filter := fmt.Sprintf(`metric.type="%s" AND metric.labels.instance_name="%s"`, metric, instanceName)
 
 	projectsTimeSeriesListCall := svc.Projects.TimeSeries.List(project)
 	projectsTimeSeriesListCall.Filter(filter)
@@ -158,6 +168,38 @@ func (c *MonitoringClient) GetInstanceNames(projectID, metric string) (instanceN
 	instanceNames = make([]string, len(listResp.TimeSeries))
 	for i := range listResp.TimeSeries {
 		instanceNames[i] = listResp.TimeSeries[i].Metric.Labels["instance_name"]
+	}
+
+	return
+}
+
+func (c *MonitoringClient) GetInstanceAndDiskMaps(projectID, diskMetric string) (instanceAndDiskMaps []map[string]string) {
+	client := c.getClient()
+
+	svc, err := monitoring.New(client)
+	if err != nil {
+		log.Fatal("%v", err)
+	}
+
+	project := "projects/" + projectID
+
+	projectsTimeSeriesListCall := svc.Projects.TimeSeries.List(project)
+	projectsTimeSeriesListCall.View("HEADERS")
+	projectsTimeSeriesListCall.Filter(`metric.type="` + diskMetric + `"`)
+	projectsTimeSeriesListCall.IntervalStartTime(c.IntervalStartTime)
+	projectsTimeSeriesListCall.IntervalEndTime(c.IntervalEndTime)
+
+	listResp, err := projectsTimeSeriesListCall.Do()
+	if err != nil {
+		log.Fatal("%v", err)
+	}
+
+	instanceAndDiskMaps = make([]map[string]string, len(listResp.TimeSeries))
+	for i := range listResp.TimeSeries {
+		m := make(map[string]string)
+		m[InstanceNameKey] = listResp.TimeSeries[i].Metric.Labels["instance_name"]
+		m[DeviceNameKey] = listResp.TimeSeries[i].Metric.Labels["device_name"]
+		instanceAndDiskMaps[i] = m
 	}
 
 	return
