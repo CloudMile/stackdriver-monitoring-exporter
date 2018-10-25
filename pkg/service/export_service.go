@@ -1,7 +1,6 @@
 package service
 
 import (
-	"log"
 	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
 	"stackdriver-monitoring-exporter/pkg/metric_exporter"
 	"stackdriver-monitoring-exporter/pkg/utils"
