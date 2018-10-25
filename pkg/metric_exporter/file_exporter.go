@@ -39,13 +39,19 @@ func (f FileExporter) saveToFile(filename, header, content string) {
 	fmt.Fprintf(file, content)
 }
 
-func (f FileExporter) Export(dateTime time.Time, projectID, metric, instanceName string, metricPoints []string) {
+func (f FileExporter) Export(dateTime time.Time, projectID, metric, instanceName string, metricPoints []string, attendNames ...string) {
 	folder := fmt.Sprintf("%s/%s/%d/%2d/%2d/%s", f.Dir, projectID, dateTime.Year(), dateTime.Month(), dateTime.Day(), instanceName)
 	os.MkdirAll(folder, os.ModePerm)
 
 	title := strings.Replace(metric, "compute.googleapis.com/instance/", "", -1)
 	title = strings.Replace(title, "/", "_", -1)
 
-	output := fmt.Sprintf("%s/%s[%s][%s].csv", folder, dateTime.Format("2006-01-02T15:04:05"), instanceName, title)
+	var output string
+	if len(attendNames) == 0 {
+		output = fmt.Sprintf("%s/%s[%s][%s].csv", folder, dateTime.Format("2006-01-02"), instanceName, title)
+	} else {
+		output = fmt.Sprintf("%s/%s[%s][%s][%s].csv", folder, dateTime.Format("2006-01-02"), instanceName, title, strings.Join(attendNames, "-"))
+	}
+
 	f.saveTimeSeriesToCSV(output, metricPoints)
 }
