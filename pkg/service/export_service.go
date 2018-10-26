@@ -20,43 +20,51 @@ var monitoringDiskMetrics = []string{
 
 type ExportService struct {
 	conf utils.Conf
+	client stackdriver.MonitoringClient
 }
 
-func newMetricExporter(c utils.Conf) metric_exporter.MetricExporter {
-	switch c.ExporterClass {
+func NewExportService() ExportService {
+	var es = ExportService{}
+	return es.init()
+}
+
+func (es ExportService) newMetricExporter() metric_exporter.MetricExporter {
+	switch es.conf.ExporterClass {
 	case "GCSExporter":
-		return metric_exporter.NewGCSExporter(c)
+		return metric_exporter.NewGCSExporter(es.conf)
 	default:
-		return metric_exporter.NewFileExporter(c)
+		return metric_exporter.NewFileExporter(es.conf)
 	}
 }
 
+func (es ExportService) init() ExportService {
+	es.conf.LoadConfig()
+
+	es.client = stackdriver.MonitoringClient{}
+	es.client.SetTimezone(es.conf.Timezone)
+
+	return es
+}
+
 func (es ExportService) Do() {
-	var c utils.Conf
-	c.LoadConfig()
+	metricExporter := es.newMetricExporter()
 
-	metricExporter := newMetricExporter(c)
-
-	client := stackdriver.MonitoringClient{}
-
-	client.SetTimezone(c.Timezone)
-
-	for prjIdx := range c.Projects {
-		projectID := c.Projects[prjIdx].ProjectID
+	for prjIdx := range es.conf.Projects {
+		projectID := es.conf.Projects[prjIdx].ProjectID
 
 		// Common instance metrics
 		for mIdx := range monitoringMetrics {
 			metric := monitoringMetrics[mIdx]
 
-			instanceNames := client.GetInstanceNames(projectID, metric)
+			instanceNames := es.client.GetInstanceNames(projectID, metric)
 
 			for instIdx := range instanceNames {
 				instanceName := instanceNames[instIdx]
 
 				filter := stackdriver.MakeInstanceFilter(metric, instanceName)
-				points := client.RetrieveMetricPoints(projectID, metric, filter)
+				points := es.client.RetrieveMetricPoints(projectID, metric, filter)
 
-				metricExporter.Export(client.StartTime.In(client.Location()), projectID, metric, instanceName, points)
+				metricExporter.Export(es.client.StartTime.In(es.client.Location()), projectID, metric, instanceName, points)
 			}
 		}
 
@@ -64,7 +72,7 @@ func (es ExportService) Do() {
 		for mdIdx := range monitoringDiskMetrics {
 			metric := monitoringDiskMetrics[mdIdx]
 
-			instanceAndDiskMaps := client.GetInstanceAndDiskMaps(projectID, metric)
+			instanceAndDiskMaps := es.client.GetInstanceAndDiskMaps(projectID, metric)
 
 			for mapIdx := range instanceAndDiskMaps {
 				m := instanceAndDiskMaps[mapIdx]
@@ -72,9 +80,9 @@ func (es ExportService) Do() {
 				deviceName := m[stackdriver.DeviceNameKey]
 
 				filter := stackdriver.MakeDiskFilter(metric, instanceName, deviceName)
-				points := client.RetrieveMetricPoints(projectID, metric, filter)
+				points := es.client.RetrieveMetricPoints(projectID, metric, filter)
 
-				metricExporter.Export(client.StartTime.In(client.Location()), projectID, metric, instanceName, points, "disk", deviceName)
+				metricExporter.Export(es.client.StartTime.In(es.client.Location()), projectID, metric, instanceName, points, "disk", deviceName)
 			}
 		}
 	}

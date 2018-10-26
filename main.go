@@ -23,9 +23,9 @@ func main() {
 	// [END setting_port]
 }
 
-// indexHandler responds to requests with our greeting.
+// Index
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	exportService := service.ExportService{}
+	exportService := service.NewExportService()
 	exportService.Do()
 
 	fmt.Fprint(w, "Done")
