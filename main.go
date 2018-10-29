@@ -11,7 +11,7 @@ import (
 
 func main() {
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/job", jobHandler)
+	http.HandleFunc("/cron/metrics-export", jobHandler)
 	http.HandleFunc("/export", exportMetricPointsHandler)
 
 	appengine.Main()

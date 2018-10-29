@@ -1,0 +1,5 @@
+cron:
+- description: "Daily metrics export job"
+  url: /cron/metrics-export
+  schedule: every day 03:10
+  timezone: Asia/Taipei
