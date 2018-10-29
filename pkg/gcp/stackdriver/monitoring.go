@@ -14,7 +14,8 @@ import (
 
 const PointCSVHeader = "timestamp,datetime,value"
 const AggregationAlignmentPeriod = "60s"
-const AggregationPerSeriesAligner = "ALIGN_RATE"
+const AggregationPerSeriesAlignerRate = "ALIGN_RATE"
+const AggregationPerSeriesAlignerMean = "ALIGN_MEAN"
 const MinutesOneDay = 60 * 24
 
 const InstanceNameKey = "instanceName"
@@ -104,7 +105,7 @@ func (c *MonitoringClient) pointsToMetricPoints(points []*monitoring.Point) (met
 
 		if pointTime.Equal(t) {
 			t = t.Add(time.Hour * (time.Duration)(c.TimeZone))
-			metricPoints[metricIdx] = fmt.Sprintf("%d,%s,%g", t.Unix(), t.Format("2006-01-02 15:04:05"), *(points[pointIdx].Value.DoubleValue))
+			metricPoints[metricIdx] = fmt.Sprintf("%d,%s,%f", t.Unix(), t.Format("2006-01-02 15:04:05"), *(points[pointIdx].Value.DoubleValue))
 
 			pointIdx = pointIdx - 1
 		} else {
@@ -120,11 +121,16 @@ func MakeInstanceFilter(metric, instanceName string) string {
 	return fmt.Sprintf(`metric.type="%s" AND metric.labels.instance_name="%s"`, metric, instanceName)
 }
 
+// Only query instance used memory from agent
+func MakeAgentMemoryFilter(metric, instanceName string) string {
+	return fmt.Sprintf(`metric.type="%s" AND metadata.user_labels.name="%s" AND metric.labels.state="%s"`, metric, instanceName, "used")
+}
+
 func MakeDiskFilter(metric, instanceName, deviceName string) string {
 	return fmt.Sprintf(`metric.type="%s" AND metric.labels.instance_name="%s" AND metric.labels.device_name="%s"`, metric, instanceName, deviceName)
 }
 
-func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, filter string) (metricPoints []string) {
+func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, aligner, filter string) (metricPoints []string) {
 	client := c.getClient()
 
 	svc, err := monitoring.New(client)
@@ -138,7 +144,7 @@ func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, filter string
 	projectsTimeSeriesListCall.Filter(filter)
 	projectsTimeSeriesListCall.IntervalStartTime(c.IntervalStartTime)
 	projectsTimeSeriesListCall.IntervalEndTime(c.IntervalEndTime)
-	projectsTimeSeriesListCall.AggregationPerSeriesAligner(AggregationPerSeriesAligner)
+	projectsTimeSeriesListCall.AggregationPerSeriesAligner(aligner)
 	projectsTimeSeriesListCall.AggregationAlignmentPeriod(AggregationAlignmentPeriod)
 
 	listResp, err := projectsTimeSeriesListCall.Do()

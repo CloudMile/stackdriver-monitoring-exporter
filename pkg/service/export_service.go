@@ -17,6 +17,17 @@ var monitoringMetrics = []string{
 	"compute.googleapis.com/instance/network/received_bytes_count",
 }
 
+// sampled every 60 seconds
+//
+// * buffered
+// * cached
+// * free
+// * used
+//
+var monitoringAgentMetrics = []string{
+	"agent.googleapis.com/memory/bytes_used",
+}
+
 // one instance may have many disks
 var monitoringDiskMetrics = []string{
 	"compute.googleapis.com/instance/disk/write_ops_count",
@@ -59,6 +70,9 @@ func (es ExportService) Do(ctx context.Context) {
 		// Common instance metrics
 		es.exportInstanceCommonMetrics(ctx, projectID)
 
+		// Agent metrics
+		es.exportInstanceAgentMetrics(ctx, projectID)
+
 		// Disk metrics
 		es.exportInstanceDiskMetrics(ctx, projectID)
 	}
@@ -75,13 +89,43 @@ func (es ExportService) exportInstanceCommonMetrics(ctx context.Context, project
 			instanceName := instanceNames[instIdx]
 
 			filter := stackdriver.MakeInstanceFilter(metric, instanceName)
-			// es.Export(projectID, metric, filter, instanceName)
 
 			t := taskqueue.NewPOSTTask(
 				"/export",
 				map[string][]string{
 					"projectID":    {projectID},
 					"metric":       {metric},
+					"aligner":      {stackdriver.AggregationPerSeriesAlignerRate},
+					"filter":       {filter},
+					"instanceName": {instanceName},
+				},
+			)
+			if _, err := taskqueue.Add(ctx, t, ""); err != nil {
+				log.Fatal(err.Error())
+			}
+		}
+	}
+}
+
+func (es ExportService) exportInstanceAgentMetrics(ctx context.Context, projectID string) {
+	// We use the common metric to get the instance name, we can't query with agent metric
+	instanceNames := es.client.GetInstanceNames(projectID, monitoringMetrics[0])
+
+	for mIdx := range monitoringAgentMetrics {
+		metric := monitoringAgentMetrics[mIdx]
+
+		for instIdx := range instanceNames {
+			instanceName := instanceNames[instIdx]
+
+			// Currently only support instance memory
+			filter := stackdriver.MakeAgentMemoryFilter(metric, instanceName)
+
+			t := taskqueue.NewPOSTTask(
+				"/export",
+				map[string][]string{
+					"projectID":    {projectID},
+					"metric":       {metric},
+					"aligner":      {stackdriver.AggregationPerSeriesAlignerMean},
 					"filter":       {filter},
 					"instanceName": {instanceName},
 				},
@@ -105,13 +149,13 @@ func (es ExportService) exportInstanceDiskMetrics(ctx context.Context, projectID
 			deviceName := m[stackdriver.DeviceNameKey]
 
 			filter := stackdriver.MakeDiskFilter(metric, instanceName, deviceName)
-			// es.Export(projectID, metric, filter, instanceName, "disk", deviceName)
 
 			t := taskqueue.NewPOSTTask(
 				"/export",
 				map[string][]string{
 					"projectID":    {projectID},
 					"metric":       {metric},
+					"aligner":      {stackdriver.AggregationPerSeriesAlignerRate},
 					"filter":       {filter},
 					"instanceName": {instanceName},
 					"attendNames":  {strings.Join([]string{"disk", deviceName}, "|")},
@@ -124,8 +168,8 @@ func (es ExportService) exportInstanceDiskMetrics(ctx context.Context, projectID
 	}
 }
 
-func (es ExportService) Export(projectID, metric, filter, instanceName string, attendNames ...string) {
-	points := es.client.RetrieveMetricPoints(projectID, metric, filter)
+func (es ExportService) Export(projectID, metric, aligner, filter, instanceName string, attendNames ...string) {
+	points := es.client.RetrieveMetricPoints(projectID, metric, aligner, filter)
 
 	metricExporter := es.newMetricExporter()
 	metricExporter.Export(es.client.StartTime.In(es.client.Location()), projectID, metric, instanceName, points, attendNames...)

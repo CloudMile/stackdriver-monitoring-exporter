@@ -33,9 +33,10 @@ func jobHandler(w http.ResponseWriter, r *http.Request) {
 
 // Export Metric Points to CSV
 func exportMetricPointsHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%v, %v, %v, %v, %v",
+	log.Printf("%v, %v, %v, %v, %v, %v",
 		r.FormValue("projectID"),
 		r.FormValue("metric"),
+		r.FormValue("aligner"),
 		r.FormValue("filter"),
 		r.FormValue("instanceName"),
 		strings.Split(r.FormValue("attendNames"), "|"),
@@ -49,6 +50,7 @@ func exportMetricPointsHandler(w http.ResponseWriter, r *http.Request) {
 		exportService.Export(
 			r.FormValue("projectID"),
 			r.FormValue("metric"),
+			r.FormValue("aligner"),
 			r.FormValue("filter"),
 			r.FormValue("instanceName"),
 		)
@@ -56,6 +58,7 @@ func exportMetricPointsHandler(w http.ResponseWriter, r *http.Request) {
 		exportService.Export(
 			r.FormValue("projectID"),
 			r.FormValue("metric"),
+			r.FormValue("aligner"),
 			r.FormValue("filter"),
 			r.FormValue("instanceName"),
 			strings.Split(attendNamesStr, "|")...,
