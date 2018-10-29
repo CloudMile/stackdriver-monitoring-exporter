@@ -4,6 +4,7 @@ import (
 	"context"
 	"google.golang.org/appengine/taskqueue"
 	"log"
+	"strings"
 
 	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
 	"stackdriver-monitoring-exporter/pkg/metric_exporter"
@@ -27,9 +28,9 @@ type ExportService struct {
 	client stackdriver.MonitoringClient
 }
 
-func NewExportService() ExportService {
+func NewExportService(ctx context.Context) ExportService {
 	var es = ExportService{}
-	return es.init()
+	return es.init(ctx)
 }
 
 func (es ExportService) newMetricExporter() metric_exporter.MetricExporter {
@@ -41,18 +42,17 @@ func (es ExportService) newMetricExporter() metric_exporter.MetricExporter {
 	}
 }
 
-func (es ExportService) init() ExportService {
+func (es ExportService) init(ctx context.Context) ExportService {
 	es.conf.LoadConfig()
 
 	es.client = stackdriver.MonitoringClient{}
 	es.client.SetTimezone(es.conf.Timezone)
+	es.client.SetContext(ctx)
 
 	return es
 }
 
 func (es ExportService) Do(ctx context.Context) {
-	es.client.SetContext(ctx)
-
 	for prjIdx := range es.conf.Projects {
 		projectID := es.conf.Projects[prjIdx].ProjectID
 
@@ -114,7 +114,7 @@ func (es ExportService) exportInstanceDiskMetrics(ctx context.Context, projectID
 					"metric":       {metric},
 					"filter":       {filter},
 					"instanceName": {instanceName},
-					"attendNames":  {"disk", deviceName},
+					"attendNames":  {strings.Join([]string{"disk", deviceName}, "|")},
 				},
 			)
 			if _, err := taskqueue.Add(ctx, t, ""); err != nil {
