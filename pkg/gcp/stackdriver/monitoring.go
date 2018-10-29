@@ -53,7 +53,7 @@ func (c *MonitoringClient) Location() *time.Location {
 func (c *MonitoringClient) getCred(ctx context.Context) (cred *google.Credentials) {
 	cred, err := google.FindDefaultCredentials(ctx, monitoring.MonitoringReadScope)
 	if err != nil {
-		log.Fatal("%v", err)
+		log.Fatal("getCred: ", err.Error())
 	}
 	log.Printf("Project ID: %s", cred.ProjectID)
 
@@ -75,12 +75,21 @@ func (c *MonitoringClient) getClient() (client *http.Client) {
 func (c *MonitoringClient) newClient(ctx context.Context, cred *google.Credentials) (client *http.Client) {
 	conf, err := google.JWTConfigFromJSON(cred.JSON, monitoring.MonitoringReadScope)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("newClient:", err.Error())
 	}
 
 	client = conf.Client(ctx)
 
 	return
+}
+
+func (c *MonitoringClient) SetContext(ctx context.Context) {
+	client, err := google.DefaultClient(ctx, monitoring.MonitoringReadScope)
+	if err != nil {
+		log.Fatal("SetContext: ", err.Error())
+	}
+
+	c.client = client
 }
 
 func (c *MonitoringClient) pointsToMetricPoints(points []*monitoring.Point) (metricPoints []string) {
@@ -120,7 +129,7 @@ func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, filter string
 
 	svc, err := monitoring.New(client)
 	if err != nil {
-		log.Fatal("%v", err)
+		log.Fatal("RetrieveMetricPoints: ", err.Error())
 	}
 
 	project := "projects/" + projectID
@@ -134,7 +143,7 @@ func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, filter string
 
 	listResp, err := projectsTimeSeriesListCall.Do()
 	if err != nil {
-		log.Fatal("%v", err)
+		log.Fatal("RetrieveMetricPoints projectsTimeSeriesListCall: ", err.Error())
 	}
 
 	// Only get the first timeseries
@@ -149,7 +158,7 @@ func (c *MonitoringClient) GetInstanceNames(projectID, metric string) (instanceN
 
 	svc, err := monitoring.New(client)
 	if err != nil {
-		log.Fatal("%v", err)
+		log.Fatal("GetInstanceNames: ", err.Error())
 	}
 
 	project := "projects/" + projectID
@@ -162,7 +171,7 @@ func (c *MonitoringClient) GetInstanceNames(projectID, metric string) (instanceN
 
 	listResp, err := projectsTimeSeriesListCall.Do()
 	if err != nil {
-		log.Fatal("%v", err)
+		log.Fatal("GetInstanceNames: ", err.Error())
 	}
 
 	instanceNames = make([]string, len(listResp.TimeSeries))
@@ -178,7 +187,7 @@ func (c *MonitoringClient) GetInstanceAndDiskMaps(projectID, diskMetric string) 
 
 	svc, err := monitoring.New(client)
 	if err != nil {
-		log.Fatal("%v", err)
+		log.Fatal("GetInstanceAndDiskMaps: ", err.Error())
 	}
 
 	project := "projects/" + projectID
@@ -191,7 +200,7 @@ func (c *MonitoringClient) GetInstanceAndDiskMaps(projectID, diskMetric string) 
 
 	listResp, err := projectsTimeSeriesListCall.Do()
 	if err != nil {
-		log.Fatal("%v", err)
+		log.Fatal("GetInstanceAndDiskMaps: ", err.Error())
 	}
 
 	instanceAndDiskMaps = make([]map[string]string, len(listResp.TimeSeries))

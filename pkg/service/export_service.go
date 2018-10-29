@@ -1,6 +1,10 @@
 package service
 
 import (
+	"context"
+	"google.golang.org/appengine/taskqueue"
+	"log"
+
 	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
 	"stackdriver-monitoring-exporter/pkg/metric_exporter"
 	"stackdriver-monitoring-exporter/pkg/utils"
@@ -19,7 +23,7 @@ var monitoringDiskMetrics = []string{
 }
 
 type ExportService struct {
-	conf utils.Conf
+	conf   utils.Conf
 	client stackdriver.MonitoringClient
 }
 
@@ -46,34 +50,50 @@ func (es ExportService) init() ExportService {
 	return es
 }
 
-func (es ExportService) Do() {
+func (es ExportService) Do(ctx context.Context) {
+	es.client.SetContext(ctx)
+
 	for prjIdx := range es.conf.Projects {
 		projectID := es.conf.Projects[prjIdx].ProjectID
 
 		// Common instance metrics
-		es.exportInstanceCommonMetrics(projectID)
+		es.exportInstanceCommonMetrics(ctx, projectID)
 
 		// Disk metrics
-		es.exportInstanceDiskMetrics(projectID)
+		es.exportInstanceDiskMetrics(ctx, projectID)
 	}
 }
 
-func (es ExportService) exportInstanceCommonMetrics(projectID string) {
+func (es ExportService) exportInstanceCommonMetrics(ctx context.Context, projectID string) {
 	for mIdx := range monitoringMetrics {
 		metric := monitoringMetrics[mIdx]
 
+		log.Printf("es.client.GetInstanceNames")
 		instanceNames := es.client.GetInstanceNames(projectID, metric)
 
 		for instIdx := range instanceNames {
 			instanceName := instanceNames[instIdx]
 
 			filter := stackdriver.MakeInstanceFilter(metric, instanceName)
-			es.Export(projectID, metric, filter, instanceName)
+			// es.Export(projectID, metric, filter, instanceName)
+
+			t := taskqueue.NewPOSTTask(
+				"/export",
+				map[string][]string{
+					"projectID":    {projectID},
+					"metric":       {metric},
+					"filter":       {filter},
+					"instanceName": {instanceName},
+				},
+			)
+			if _, err := taskqueue.Add(ctx, t, ""); err != nil {
+				log.Fatal(err.Error())
+			}
 		}
 	}
 }
 
-func (es ExportService) exportInstanceDiskMetrics(projectID string) {
+func (es ExportService) exportInstanceDiskMetrics(ctx context.Context, projectID string) {
 	for mdIdx := range monitoringDiskMetrics {
 		metric := monitoringDiskMetrics[mdIdx]
 
@@ -85,7 +105,21 @@ func (es ExportService) exportInstanceDiskMetrics(projectID string) {
 			deviceName := m[stackdriver.DeviceNameKey]
 
 			filter := stackdriver.MakeDiskFilter(metric, instanceName, deviceName)
-			es.Export(projectID, metric, filter, instanceName, "disk", deviceName)
+			// es.Export(projectID, metric, filter, instanceName, "disk", deviceName)
+
+			t := taskqueue.NewPOSTTask(
+				"/export",
+				map[string][]string{
+					"projectID":    {projectID},
+					"metric":       {metric},
+					"filter":       {filter},
+					"instanceName": {instanceName},
+					"attendNames":  {"disk", deviceName},
+				},
+			)
+			if _, err := taskqueue.Add(ctx, t, ""); err != nil {
+				log.Fatal(err.Error())
+			}
 		}
 	}
 }
