@@ -1,6 +1,11 @@
 package service
 
 import (
+	"context"
+	"google.golang.org/appengine/taskqueue"
+	"log"
+	"strings"
+
 	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
 	"stackdriver-monitoring-exporter/pkg/metric_exporter"
 	"stackdriver-monitoring-exporter/pkg/utils"
@@ -12,6 +17,17 @@ var monitoringMetrics = []string{
 	"compute.googleapis.com/instance/network/received_bytes_count",
 }
 
+// sampled every 60 seconds
+//
+// * buffered
+// * cached
+// * free
+// * used
+//
+var monitoringAgentMetrics = []string{
+	"agent.googleapis.com/memory/bytes_used",
+}
+
 // one instance may have many disks
 var monitoringDiskMetrics = []string{
 	"compute.googleapis.com/instance/disk/write_ops_count",
@@ -19,63 +35,142 @@ var monitoringDiskMetrics = []string{
 }
 
 type ExportService struct {
-	conf utils.Conf
+	conf   utils.Conf
+	client stackdriver.MonitoringClient
 }
 
-func newMetricExporter(c utils.Conf) metric_exporter.MetricExporter {
-	switch c.ExporterClass {
+func NewExportService(ctx context.Context) ExportService {
+	var es = ExportService{}
+	return es.init(ctx)
+}
+
+func (es ExportService) newMetricExporter() metric_exporter.MetricExporter {
+	switch es.conf.ExporterClass {
 	case "GCSExporter":
-		return metric_exporter.NewGCSExporter(c)
+		return metric_exporter.NewGCSExporter(es.conf)
 	default:
-		return metric_exporter.NewFileExporter(c)
+		return metric_exporter.NewFileExporter(es.conf)
 	}
 }
 
-func (es ExportService) Do() {
-	var c utils.Conf
-	c.LoadConfig()
+func (es ExportService) init(ctx context.Context) ExportService {
+	es.conf.LoadConfig()
 
-	metricExporter := newMetricExporter(c)
+	es.client = stackdriver.MonitoringClient{}
+	es.client.SetTimezone(es.conf.Timezone)
+	es.client.SetContext(ctx)
 
-	client := stackdriver.MonitoringClient{}
+	return es
+}
 
-	client.SetTimezone(c.Timezone)
-
-	for prjIdx := range c.Projects {
-		projectID := c.Projects[prjIdx].ProjectID
+func (es ExportService) Do(ctx context.Context) {
+	for prjIdx := range es.conf.Projects {
+		projectID := es.conf.Projects[prjIdx].ProjectID
 
 		// Common instance metrics
-		for mIdx := range monitoringMetrics {
-			metric := monitoringMetrics[mIdx]
+		es.exportInstanceCommonMetrics(ctx, projectID)
 
-			instanceNames := client.GetInstanceNames(projectID, metric)
-
-			for instIdx := range instanceNames {
-				instanceName := instanceNames[instIdx]
-
-				filter := stackdriver.MakeInstanceFilter(metric, instanceName)
-				points := client.RetrieveMetricPoints(projectID, metric, filter)
-
-				metricExporter.Export(client.StartTime.In(client.Location()), projectID, metric, instanceName, points)
-			}
-		}
+		// Agent metrics
+		es.exportInstanceAgentMetrics(ctx, projectID)
 
 		// Disk metrics
-		for mdIdx := range monitoringDiskMetrics {
-			metric := monitoringDiskMetrics[mdIdx]
+		es.exportInstanceDiskMetrics(ctx, projectID)
+	}
+}
 
-			instanceAndDiskMaps := client.GetInstanceAndDiskMaps(projectID, metric)
+func (es ExportService) exportInstanceCommonMetrics(ctx context.Context, projectID string) {
+	for mIdx := range monitoringMetrics {
+		metric := monitoringMetrics[mIdx]
 
-			for mapIdx := range instanceAndDiskMaps {
-				m := instanceAndDiskMaps[mapIdx]
-				instanceName := m[stackdriver.InstanceNameKey]
-				deviceName := m[stackdriver.DeviceNameKey]
+		log.Printf("es.client.GetInstanceNames")
+		instanceNames := es.client.GetInstanceNames(projectID, metric)
 
-				filter := stackdriver.MakeDiskFilter(metric, instanceName, deviceName)
-				points := client.RetrieveMetricPoints(projectID, metric, filter)
+		for instIdx := range instanceNames {
+			instanceName := instanceNames[instIdx]
 
-				metricExporter.Export(client.StartTime.In(client.Location()), projectID, metric, instanceName, points, "disk", deviceName)
+			filter := stackdriver.MakeInstanceFilter(metric, instanceName)
+
+			t := taskqueue.NewPOSTTask(
+				"/export",
+				map[string][]string{
+					"projectID":    {projectID},
+					"metric":       {metric},
+					"aligner":      {stackdriver.AggregationPerSeriesAlignerRate},
+					"filter":       {filter},
+					"instanceName": {instanceName},
+				},
+			)
+			if _, err := taskqueue.Add(ctx, t, ""); err != nil {
+				log.Fatal(err.Error())
 			}
 		}
 	}
+}
+
+func (es ExportService) exportInstanceAgentMetrics(ctx context.Context, projectID string) {
+	// We use the common metric to get the instance name, we can't query with agent metric
+	instanceNames := es.client.GetInstanceNames(projectID, monitoringMetrics[0])
+
+	for mIdx := range monitoringAgentMetrics {
+		metric := monitoringAgentMetrics[mIdx]
+
+		for instIdx := range instanceNames {
+			instanceName := instanceNames[instIdx]
+
+			// Currently only support instance memory
+			filter := stackdriver.MakeAgentMemoryFilter(metric, instanceName)
+
+			t := taskqueue.NewPOSTTask(
+				"/export",
+				map[string][]string{
+					"projectID":    {projectID},
+					"metric":       {metric},
+					"aligner":      {stackdriver.AggregationPerSeriesAlignerMean},
+					"filter":       {filter},
+					"instanceName": {instanceName},
+				},
+			)
+			if _, err := taskqueue.Add(ctx, t, ""); err != nil {
+				log.Fatal(err.Error())
+			}
+		}
+	}
+}
+
+func (es ExportService) exportInstanceDiskMetrics(ctx context.Context, projectID string) {
+	for mdIdx := range monitoringDiskMetrics {
+		metric := monitoringDiskMetrics[mdIdx]
+
+		instanceAndDiskMaps := es.client.GetInstanceAndDiskMaps(projectID, metric)
+
+		for mapIdx := range instanceAndDiskMaps {
+			m := instanceAndDiskMaps[mapIdx]
+			instanceName := m[stackdriver.InstanceNameKey]
+			deviceName := m[stackdriver.DeviceNameKey]
+
+			filter := stackdriver.MakeDiskFilter(metric, instanceName, deviceName)
+
+			t := taskqueue.NewPOSTTask(
+				"/export",
+				map[string][]string{
+					"projectID":    {projectID},
+					"metric":       {metric},
+					"aligner":      {stackdriver.AggregationPerSeriesAlignerRate},
+					"filter":       {filter},
+					"instanceName": {instanceName},
+					"attendNames":  {strings.Join([]string{"disk", deviceName}, "|")},
+				},
+			)
+			if _, err := taskqueue.Add(ctx, t, ""); err != nil {
+				log.Fatal(err.Error())
+			}
+		}
+	}
+}
+
+func (es ExportService) Export(projectID, metric, aligner, filter, instanceName string, attendNames ...string) {
+	points := es.client.RetrieveMetricPoints(projectID, metric, aligner, filter)
+
+	metricExporter := es.newMetricExporter()
+	metricExporter.Export(es.client.StartTime.In(es.client.Location()), projectID, metric, instanceName, points, attendNames...)
 }

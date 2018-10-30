@@ -4,22 +4,6 @@ Export metric points from Stackdriver Monitoring to csv files.
 
 Using go version 1.11 or above.
 
-## Setup Credentials
-
-Set the creditails permission first, you may create a service account with Role **Monitoring Viewer**
-
-Use current login permission:
-
-```shell
-$ gcloud auth application-default login
-```
-
-Use the Service Account's crendentials
-
-```shell
-$ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
-```
-
 ## Configuration
 
 Edit the `config.yaml`
@@ -48,13 +32,19 @@ FileExporter's destination is file path.
 
 GCSExporter'destination is Google Cloud Storage Bucket Name. The service acccount has to been grant the **Storage Object Admin** permission of Bucket.
 
-## Export
-
-Execute to export the metric points:
+## Development
 
 ```shell
-$ go run main.go
+$ dev_appserver.py app.yaml
 ```
+
+## Deploymenty
+
+```shell
+$ gcloud app deploy app.yaml cron.yaml
+```
+
+## Export
 
 The metrics csv will be generated to metrics directory.
 
