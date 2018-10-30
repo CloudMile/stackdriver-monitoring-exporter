@@ -69,3 +69,7 @@ timestamp,datetime,value
 1539822600,2018-10-18 00:30:00,0.023403971735776092
 ...
 ```
+
+## Export metrics of multi project
+
+Add GAE service account to another project, and give it role: "Monitoring Viewer".
