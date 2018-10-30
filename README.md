@@ -4,6 +4,26 @@ A GAE service to export metric points yesterday from Stackdriver Monitoring to c
 
 Using go version 1.11 or above.
 
+This is the **Alpha** version.
+
+TODO:
+- Error handling
+- Test case
+- Refine document
+
+## Current Support Metrics
+
+- compute.googleapis.com/instance/cpu/usage_time
+- compute.googleapis.com/instance/network/sent_bytes_count
+- compute.googleapis.com/instance/network/received_bytes_count
+- compute.googleapis.com/instance/disk/write_ops_count
+- compute.googleapis.com/instance/disk/read_ops_count
+- agent.googleapis.com/memory/bytes_used
+
+Documents:
+- [GCP Metrics List](https://cloud.google.com/monitoring/api/metrics_gcp)
+- [Agent Metrics List](https://cloud.google.com/monitoring/api/metrics_agent#agent-memory)
+
 ## Enable CLoud API
 
 ```shell
@@ -71,19 +91,6 @@ timestamp,datetime,value
 1539822600,2018-10-18 00:30:00,0.023403971735776092
 ...
 ```
-
-## Current Support Metrics
-
-- compute.googleapis.com/instance/cpu/usage_time
-- compute.googleapis.com/instance/network/sent_bytes_count
-- compute.googleapis.com/instance/network/received_bytes_count
-- compute.googleapis.com/instance/disk/write_ops_count
-- compute.googleapis.com/instance/disk/read_ops_count
-- agent.googleapis.com/memory/bytes_used
-
-Documents:
-- [GCP Metrics List](https://cloud.google.com/monitoring/api/metrics_gcp)
-- [Agent Metrics List](https://cloud.google.com/monitoring/api/metrics_agent#agent-memory)
 
 ## Export metrics of multi project
 
