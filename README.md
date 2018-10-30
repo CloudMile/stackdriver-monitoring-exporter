@@ -4,6 +4,13 @@ Export metric points from Stackdriver Monitoring to csv files.
 
 Using go version 1.11 or above.
 
+## Enable CLoud API
+
+```shell
+$ gcloud services enable cloudresourcemanager.googleapis.com
+$ gcloud services enable monitoring.googleapis.com
+```
+
 ## Configuration
 
 Edit the `config.yaml`
@@ -16,21 +23,11 @@ Example:
 
 ```yaml
 # https://cloud.google.com/monitoring/api/metrics_gcp
-projects:
-  - projectID: <YOUR_PROJECT_ID>
-exporter: FileExporter # FileExporter, GCSExporter
-destination: metrics
+exporter: GCSExporter
+destination: <GCS_BUCKET_NAME>
 ```
 
-Replace `<YOUR_PROJECT_ID>` with your project ID
-
-Now support two Exporter Class:
-* FileExporter
-* GCSExporter
-
-FileExporter's destination is file path.
-
-GCSExporter'destination is Google Cloud Storage Bucket Name. The service acccount has to been grant the **Storage Object Admin** permission of Bucket.
+GCSExporter'destination is Google Cloud Storage Bucket Name. The service acccount has to be grant the **Storage Object Admin** permission of Bucket.
 
 ## Development
 
@@ -72,3 +69,7 @@ timestamp,datetime,value
 1539822600,2018-10-18 00:30:00,0.023403971735776092
 ...
 ```
+
+## Export metrics of multi project
+
+Add GAE service account to another project, and give it role: "Monitoring Viewer".

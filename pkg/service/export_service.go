@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"stackdriver-monitoring-exporter/pkg/gcp"
 	"stackdriver-monitoring-exporter/pkg/gcp/stackdriver"
 	"stackdriver-monitoring-exporter/pkg/metric_exporter"
 	"stackdriver-monitoring-exporter/pkg/utils"
@@ -64,8 +65,12 @@ func (es ExportService) init(ctx context.Context) ExportService {
 }
 
 func (es ExportService) Do(ctx context.Context) {
-	for prjIdx := range es.conf.Projects {
-		projectID := es.conf.Projects[prjIdx].ProjectID
+	projectIDs := gcp.GetProjects(ctx)
+
+	for prjIdx := range projectIDs {
+		projectID := projectIDs[prjIdx]
+
+		log.Printf("Query metrics in project ID: %s", projectID)
 
 		// Common instance metrics
 		es.exportInstanceCommonMetrics(ctx, projectID)

@@ -8,7 +8,6 @@ import (
 )
 
 type Conf struct {
-	Projects      []ConfProject `yaml:"projects"`
 	Timezone      int           `yaml:"timezone"`
 	ExporterClass string        `yaml:"exporterClass"`
 	Destination   string        `yaml:"destination"`
