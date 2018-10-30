@@ -51,6 +51,7 @@ func (g GCSExporter) Export(dateTime time.Time, projectID, metric, instanceName 
 	folder := fmt.Sprintf("%s/%d/%2d/%2d/%s", projectID, dateTime.Year(), dateTime.Month(), dateTime.Day(), instanceName)
 
 	title := strings.Replace(metric, "compute.googleapis.com/instance/", "", -1)
+	title = strings.Replace(title, "agent.googleapis.com/", "", -1)
 	title = strings.Replace(title, "/", "_", -1)
 
 	var output string
