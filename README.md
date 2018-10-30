@@ -1,6 +1,6 @@
 # Stackdriver Monitoring Exporter
 
-Export metric points from Stackdriver Monitoring to csv files.
+A GAE service to export metric points yesterday from Stackdriver Monitoring to csv files.
 
 Using go version 1.11 or above.
 
@@ -22,10 +22,12 @@ $ cp config.yaml.example config.yaml
 Example:
 
 ```yaml
-# https://cloud.google.com/monitoring/api/metrics_gcp
+timezone: 8
 exporter: GCSExporter
 destination: <GCS_BUCKET_NAME>
 ```
+
+Change the timezone to you need.
 
 GCSExporter'destination is Google Cloud Storage Bucket Name. The service acccount has to be grant the **Storage Object Admin** permission of Bucket.
 
@@ -69,6 +71,19 @@ timestamp,datetime,value
 1539822600,2018-10-18 00:30:00,0.023403971735776092
 ...
 ```
+
+## Current Support Metrics
+
+- compute.googleapis.com/instance/cpu/usage_time
+- compute.googleapis.com/instance/network/sent_bytes_count
+- compute.googleapis.com/instance/network/received_bytes_count
+- compute.googleapis.com/instance/disk/write_ops_count
+- compute.googleapis.com/instance/disk/read_ops_count
+- agent.googleapis.com/memory/bytes_used
+
+Documents:
+- [GCP Metrics List](https://cloud.google.com/monitoring/api/metrics_gcp)
+- [Agent Metrics List](https://cloud.google.com/monitoring/api/metrics_agent#agent-memory)
 
 ## Export metrics of multi project
 
