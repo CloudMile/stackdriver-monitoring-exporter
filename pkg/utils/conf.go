@@ -9,7 +9,7 @@ import (
 
 type Conf struct {
 	Timezone      int           `yaml:"timezone"`
-	ExporterClass string        `yaml:"exporterClass"`
+	ExporterClass string        `yaml:"exporter"`
 	Destination   string        `yaml:"destination"`
 }
 
