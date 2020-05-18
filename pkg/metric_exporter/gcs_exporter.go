@@ -48,7 +48,7 @@ func (g GCSExporter) saveTimeSeriesToCSV(filename string, metricPoints []string)
 }
 
 func (g GCSExporter) Export(dateTime time.Time, projectID, metric, instanceName string, metricPoints []string, attendNames ...string) {
-	folder := fmt.Sprintf("%s/%d/%2d/%2d/%s", projectID, dateTime.Year(), dateTime.Month(), dateTime.Day(), instanceName)
+	folder := fmt.Sprintf("%s/%d/%02d/%02d/%s", projectID, dateTime.Year(), dateTime.Month(), dateTime.Day(), instanceName)
 
 	title := strings.Replace(metric, "compute.googleapis.com/instance/", "", -1)
 	title = strings.Replace(title, "agent.googleapis.com/", "", -1)
