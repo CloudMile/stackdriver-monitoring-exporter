@@ -31,6 +31,10 @@ $ gcloud services enable cloudresourcemanager.googleapis.com
 $ gcloud services enable monitoring.googleapis.com
 ```
 
+## Create Google Cloud Storage(GCS) Bucket
+
+https://cloud.google.com/storage/docs/creating-buckets
+
 ## Configuration
 
 Edit the `config.yaml`
@@ -51,13 +55,40 @@ Change the timezone to you need.
 
 GCSExporter'destination is Google Cloud Storage Bucket Name. The service acccount has to be grant the **Storage Object Admin** permission of Bucket.
 
+Edit the `cron.yaml`
+
+Change the job start time and timezone.
+
+```yaml
+cron:
+- description: "Daily metrics export job"
+  url: /cron/metrics-export
+  schedule: every day 03:10
+  timezone: Asia/Taipei
+```
+
 ## Development
+
+Generate Application crdentials
+
+```shell
+$ gcloud auth application login
+```
+
+Run dev server
 
 ```shell
 $ dev_appserver.py app.yaml
 ```
 
-## Deploymenty
+You can modify `config.yaml` to save metrics locally.
+
+```yaml
+timezone: 8
+destination: <directory>
+```
+
+## Deployment
 
 ```shell
 $ gcloud app deploy app.yaml cron.yaml
