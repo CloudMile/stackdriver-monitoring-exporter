@@ -153,6 +153,11 @@ func (c *MonitoringClient) RetrieveMetricPoints(projectID, metric, aligner, filt
 	}
 
 	// Only get the first timeseries
+	if len(listResp.TimeSeries) == 0 {
+		metricPoints = []string{}	
+		return
+	}
+
 	timeSeries := listResp.TimeSeries[0]
 	metricPoints = c.pointsToMetricPoints(timeSeries.Points)
 
