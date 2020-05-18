@@ -1,5 +1,7 @@
 module stackdriver-monitoring-exporter
 
+go 1.14
+
 require (
 	cloud.google.com/go v0.30.0
 	github.com/googleapis/gax-go v2.0.0+incompatible // indirect

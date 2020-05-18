@@ -40,7 +40,7 @@ func (f FileExporter) saveToFile(filename, header, content string) {
 }
 
 func (f FileExporter) Export(dateTime time.Time, projectID, metric, instanceName string, metricPoints []string, attendNames ...string) {
-	folder := fmt.Sprintf("%s/%s/%d/%2d/%2d/%s", f.Dir, projectID, dateTime.Year(), dateTime.Month(), dateTime.Day(), instanceName)
+	folder := fmt.Sprintf("%s/%s/%d/%02d/%02d/%s", f.Dir, projectID, dateTime.Year(), dateTime.Month(), dateTime.Day(), instanceName)
 	os.MkdirAll(folder, os.ModePerm)
 
 	title := strings.Replace(metric, "compute.googleapis.com/instance/", "", -1)
